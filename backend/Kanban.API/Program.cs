@@ -67,6 +67,7 @@ var envHost = Environment.GetEnvironmentVariable("MYSQLHOST");
 if (!string.IsNullOrEmpty(envHost))
 {
     connectionString = $"Server={envHost};Port={Environment.GetEnvironmentVariable("MYSQLPORT")};Database={Environment.GetEnvironmentVariable("MYSQLDATABASE")};User={Environment.GetEnvironmentVariable("MYSQLUSER")};Password={Environment.GetEnvironmentVariable("MYSQLPASSWORD")};";
+    Console.WriteLine($"[Backend] 偵測到雲端環境變數，準備連線至: {envHost}");
 }
 
 if (string.IsNullOrEmpty(connectionString))
@@ -75,7 +76,7 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 45))));
 
 var app = builder.Build();
 
