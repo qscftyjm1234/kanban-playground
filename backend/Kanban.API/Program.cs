@@ -62,17 +62,27 @@ builder.Services.AddCors(options =>
 // 資料庫設定
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// 自動偵測 Railway 環境變數並組合 (解決 URL 格式不支援問題)
-var envHost = Environment.GetEnvironmentVariable("MYSQLHOST");
-if (!string.IsNullOrEmpty(envHost))
+// 資料庫設定
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// 終極方案：解析 Railway 官方 MYSQL_URL (mysql://user:pass@host:port/db)
+var mysqlUrl = Environment.GetEnvironmentVariable("MYSQL_URL");
+if (!string.IsNullOrEmpty(mysqlUrl))
 {
-    var port = Environment.GetEnvironmentVariable("MYSQLPORT") ?? "3306";
-    var db = Environment.GetEnvironmentVariable("MYSQLDATABASE") ?? Environment.GetEnvironmentVariable("MYSQL_DATABASE");
-    var user = Environment.GetEnvironmentVariable("MYSQLUSER") ?? Environment.GetEnvironmentVariable("MYSQL_USER");
-    var pass = Environment.GetEnvironmentVariable("MYSQLPASSWORD") ?? Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
-    
-    connectionString = $"Server={envHost};Port={port};Database={db};User={user};Password={pass};";
-    Console.WriteLine($"[Backend] 偵測到雲端變數: Host={envHost}, Port={port}, DB={db}, User={user}");
+    try 
+    {
+        var uri = new Uri(mysqlUrl);
+        var db = uri.PathAndQuery.TrimStart('/');
+        var userInfo = uri.UserInfo.Split(':');
+        var user = userInfo[0];
+        var pass = userInfo.Length > 1 ? userInfo[1] : "";
+        connectionString = $"Server={uri.Host};Port={uri.Port};Database={db};User={user};Password={pass};SSL Mode=None;";
+        Console.WriteLine($"[Backend] 成功解析 MYSQL_URL!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Backend] MYSQL_URL 解析失敗: {ex.Message}");
+    }
 }
 
 if (string.IsNullOrEmpty(connectionString))
@@ -81,7 +91,7 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 45)),
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
         mySqlOptions => mySqlOptions.EnableRetryOnFailure(
             maxRetryCount: 10,
             maxRetryDelay: TimeSpan.FromSeconds(30),
