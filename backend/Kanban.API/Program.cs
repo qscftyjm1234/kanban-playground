@@ -59,10 +59,11 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 資料庫設定
+// --- 資料庫連線：三層防護解析邏輯 ---
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+string? source = "appsettings.json";
 
-// 終極方案：解析 Railway 官方 MYSQL_URL (mysql://user:pass@host:port/db)
+// 1. 優先嘗試解析 MYSQL_URL 
 var mysqlUrl = Environment.GetEnvironmentVariable("MYSQL_URL");
 if (!string.IsNullOrEmpty(mysqlUrl))
 {
@@ -71,20 +72,32 @@ if (!string.IsNullOrEmpty(mysqlUrl))
         var uri = new Uri(mysqlUrl);
         var db = uri.PathAndQuery.TrimStart('/');
         var userInfo = uri.UserInfo.Split(':');
-        var user = userInfo[0];
-        var pass = userInfo.Length > 1 ? userInfo[1] : "";
-        connectionString = $"Server={uri.Host};Port={uri.Port};Database={db};User={user};Password={pass};SSL Mode=None;";
-        Console.WriteLine($"[Backend] 成功解析 MYSQL_URL!");
+        connectionString = $"Server={uri.Host};Port={uri.Port};Database={db};User={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};SSL Mode=None;";
+        source = "MYSQL_URL";
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[Backend] MYSQL_URL 解析失敗: {ex.Message}");
-    }
+    catch { /* 忽略解析錯誤，交給下一層處理 */ }
 }
+
+// 2. 如果沒抓到 URL，嘗試組合個別變項 (Railway 常用)
+if (source == "appsettings.json" && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MYSQLHOST")))
+{
+    var host = Environment.GetEnvironmentVariable("MYSQLHOST");
+    var port = Environment.GetEnvironmentVariable("MYSQLPORT") ?? "3306";
+    var db = Environment.GetEnvironmentVariable("MYSQLDATABASE") ?? Environment.GetEnvironmentVariable("MYSQL_DATABASE");
+    var user = Environment.GetEnvironmentVariable("MYSQLUSER") ?? Environment.GetEnvironmentVariable("MYSQL_USER");
+    var pass = Environment.GetEnvironmentVariable("MYSQLPASSWORD") ?? Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
+    connectionString = $"Server={host};Port={port};Database={db};User={user};Password={pass};SSL Mode=None;";
+    source = "Railway Individual Variables";
+}
+
+// 輸出診斷資訊 (遮蔽密碼)
+var maskedConn = string.IsNullOrEmpty(connectionString) ? "NULL" : connectionString.Substring(0, Math.Min(connectionString.Length, connectionString.IndexOf("Password=") + 9)) + "********;";
+Console.WriteLine($"[Backend] 資料庫連線來源: {source}");
+Console.WriteLine($"[Backend] 連線資訊診斷: {maskedConn}");
 
 if (string.IsNullOrEmpty(connectionString))
 {
-    throw new InvalidOperationException("無法獲取資料庫連線字串。請檢查環境變數配置。");
+    throw new InvalidOperationException("無法獲取資料庫連線字串。請檢查雲端環境變數。");
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
