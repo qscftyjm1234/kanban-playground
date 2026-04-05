@@ -59,47 +59,38 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 資料庫設定（等待 MySQL 啟動）
+// 資料庫設定
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// 自動偵測 Railway 環境變數並組合 (解決 URL 格式不支援問題)
+var envHost = Environment.GetEnvironmentVariable("MYSQLHOST");
+if (!string.IsNullOrEmpty(envHost))
+{
+    connectionString = $"Server={envHost};Port={Environment.GetEnvironmentVariable("MYSQLPORT")};Database={Environment.GetEnvironmentVariable("MYSQLDATABASE")};User={Environment.GetEnvironmentVariable("MYSQLUSER")};Password={Environment.GetEnvironmentVariable("MYSQLPASSWORD")};";
+}
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("無法獲取資料庫連線字串。請檢查環境變數配置。");
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 45))));
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
 var app = builder.Build();
 
-// 自動建立資料庫與資料表（具備重試機制）
+// 自動建立資料庫與資料表
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    
-    // 簡單的連線重試邏輯，適合 Docker 環境
-    int retryCount = 10;
-    while (retryCount > 0)
+    try 
     {
-        try 
-        {
-            context.Database.Migrate();
-            Console.WriteLine("[Backend] 資料庫遷移成功。");
-            break;
-        }
-        catch (Exception ex)
-        {
-            // 如果報錯是 "資料表已存在"，代表可能是手動建立或同步問題，此時應該繼續啟動而非卡死
-            if (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine($"[Backend] 警告: 資料表已存在，跳過自動遷移並繼續啟動：{ex.Message}");
-                break;
-            }
-
-            retryCount--;
-            if (retryCount == 0) 
-            {
-                Console.WriteLine($"[Backend] 嚴重錯誤: 資料庫連線或遷移失敗: {ex.Message}");
-                // 即使失敗也嘗試讓伺服器啟動，以便開發者能透過 API 或 Swagger 診斷
-                break;
-            }
-            Console.WriteLine($"[Backend] 等待資料庫啟動或遷移中... ({ex.Message}) 剩餘重試次數: {retryCount}");
-            Thread.Sleep(3000); // 等待 3 秒再重試
-        }
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        context.Database.Migrate();
+        Console.WriteLine("[Backend] 資料庫遷移完成。");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Backend] 資料庫遷移失敗: {ex.Message}");
     }
 }
 
