@@ -59,49 +59,53 @@ builder.Services.AddCors(options =>
     });
 });
 
-// --- 資料庫連線：三層防護解析邏輯 ---
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-string? source = "appsettings.json";
+// --- 資料庫連線：專為 Railway 優化的解析邏輯 ---
+var host = Environment.GetEnvironmentVariable("MYSQLHOST");
+var port = Environment.GetEnvironmentVariable("MYSQLPORT") ?? "3306";
+var db = Environment.GetEnvironmentVariable("MYSQLDATABASE");
+var user = Environment.GetEnvironmentVariable("MYSQLUSER");
+var pass = Environment.GetEnvironmentVariable("MYSQLPASSWORD");
+var connUrl = Environment.GetEnvironmentVariable("MYSQL_URL");
 
-// 1. 優先嘗試解析 MYSQL_URL 
-var mysqlUrl = Environment.GetEnvironmentVariable("MYSQL_URL");
-if (!string.IsNullOrEmpty(mysqlUrl))
+string? connectionString = null;
+string source = "Unknown";
+
+// 優先級 1: 使用個別組件組合 (最穩定)
+if (!string.IsNullOrEmpty(host))
 {
-    try 
-    {
-        var uri = new Uri(mysqlUrl);
-        var db = uri.PathAndQuery.TrimStart('/');
+    connectionString = $"Server={host};Port={port};Database={db};User={user};Password={pass};AllowPublicKeyRetrieval=True;SSL Mode=None;";
+    source = "Railway Components";
+}
+// 優先級 2: 解析 MYSQL_URL
+else if (!string.IsNullOrEmpty(connUrl))
+{
+    try {
+        var uri = new Uri(connUrl);
+        var dbName = uri.PathAndQuery.TrimStart('/');
         var userInfo = uri.UserInfo.Split(':');
-        connectionString = $"Server={uri.Host};Port={uri.Port};Database={db};User={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};SSL Mode=None;";
+        connectionString = $"Server={uri.Host};Port={uri.Port};Database={dbName};User={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};AllowPublicKeyRetrieval=True;SSL Mode=None;";
         source = "MYSQL_URL";
-    }
-    catch { /* 忽略解析錯誤，交給下一層處理 */ }
+    } catch { /* parse error */ }
 }
-
-// 2. 如果沒抓到 URL，嘗試組合個別變項 (Railway 常用)
-if (source == "appsettings.json" && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MYSQLHOST")))
-{
-    var host = Environment.GetEnvironmentVariable("MYSQLHOST");
-    var port = Environment.GetEnvironmentVariable("MYSQLPORT") ?? "3306";
-    var db = Environment.GetEnvironmentVariable("MYSQLDATABASE") ?? Environment.GetEnvironmentVariable("MYSQL_DATABASE");
-    var user = Environment.GetEnvironmentVariable("MYSQLUSER") ?? Environment.GetEnvironmentVariable("MYSQL_USER");
-    var pass = Environment.GetEnvironmentVariable("MYSQLPASSWORD") ?? Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
-    connectionString = $"Server={host};Port={port};Database={db};User={user};Password={pass};SSL Mode=None;";
-    source = "Railway Individual Variables";
-}
-
-// 輸出診斷資訊 (遮蔽密碼)
-var maskedConn = string.IsNullOrEmpty(connectionString) ? "NULL" : connectionString.Substring(0, Math.Min(connectionString.Length, connectionString.IndexOf("Password=") + 9)) + "********;";
-Console.WriteLine($"[Backend] 資料庫連線來源: {source}");
-Console.WriteLine($"[Backend] 連線資訊診斷: {maskedConn}");
-
+// 優先級 3: 本地備援
 if (string.IsNullOrEmpty(connectionString))
 {
-    throw new InvalidOperationException("無法獲取資料庫連線字串。請檢查雲端環境變數。");
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    source = "Appsettings Fallback";
+}
+
+// 輸出精確診斷 (遮蔽密碼)
+Console.WriteLine($"[Backend] 連線來源: {source}");
+if (!string.IsNullOrEmpty(connectionString))
+{
+    var masked = connectionString.Contains("Password=") 
+        ? connectionString.Substring(0, connectionString.IndexOf("Password=") + 9) + "********;" 
+        : connectionString;
+    Console.WriteLine($"[Backend] 連線字串: {masked}");
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
+    options.UseMySql(connectionString!, ServerVersion.AutoDetect(connectionString!),
         mySqlOptions => mySqlOptions.EnableRetryOnFailure(
             maxRetryCount: 10,
             maxRetryDelay: TimeSpan.FromSeconds(30),
