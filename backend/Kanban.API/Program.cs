@@ -59,49 +59,51 @@ builder.Services.AddCors(options =>
     });
 });
 
-// --- 資料庫連線：專為 Railway 優化的解析邏輯 ---
-var host = Environment.GetEnvironmentVariable("MYSQLHOST");
-var port = Environment.GetEnvironmentVariable("MYSQLPORT") ?? "3306";
-var db = Environment.GetEnvironmentVariable("MYSQLDATABASE");
-var user = Environment.GetEnvironmentVariable("MYSQLUSER");
-var pass = Environment.GetEnvironmentVariable("MYSQLPASSWORD");
-var connUrl = Environment.GetEnvironmentVariable("MYSQL_URL");
+// --- 資料庫連線：對齊成功範例的解析引擎 ---
+var rawConn = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
+              ?? Environment.GetEnvironmentVariable("MYSQL_URL");
 
 string? connectionString = null;
-string source = "Unknown";
+string source = "Default";
 
-// 優先級 1: 使用個別組件組合 (最穩定)
-if (!string.IsNullOrEmpty(host))
-{
-    connectionString = $"Server={host};Port={port};Initial Catalog={db};User ID={user};Password={pass};AllowPublicKeyRetrieval=True;SSL Mode=None;Charset=utf8mb4;";
-    source = "Railway Components (Refined)";
-}
-// 優先級 2: 解析 MYSQL_URL
-else if (!string.IsNullOrEmpty(connUrl))
+if (!string.IsNullOrEmpty(rawConn) && rawConn.StartsWith("mysql://"))
 {
     try {
-        var uri = new Uri(connUrl);
+        var uri = new Uri(rawConn);
         var dbName = uri.PathAndQuery.TrimStart('/');
         var userInfo = uri.UserInfo.Split(':');
-        connectionString = $"Server={uri.Host};Port={uri.Port};Initial Catalog={dbName};User ID={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};AllowPublicKeyRetrieval=True;SSL Mode=None;Charset=utf8mb4;";
-        source = "MYSQL_URL (Refined)";
-    } catch { /* parse error */ }
+        var userPart = userInfo[0];
+        var passPart = userInfo.Length > 1 ? userInfo[1] : "";
+        connectionString = $"Server={uri.Host};Port={uri.Port};Database={dbName};User={userPart};Password={passPart};AllowPublicKeyRetrieval=True;SSL Mode=None;Charset=utf8mb4;";
+        source = "Environment URL (Parsed)";
+    } catch { /* parse failure fallback */ }
 }
-// 優先級 3: 本地備援
+
 if (string.IsNullOrEmpty(connectionString))
 {
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    source = "Appsettings Fallback";
+    source = "Configuration/Individual Vars";
+    
+    // 如果還是空的，嘗試組合個別變數
+    var host = Environment.GetEnvironmentVariable("MYSQLHOST");
+    if (!string.IsNullOrEmpty(host))
+    {
+        var port = Environment.GetEnvironmentVariable("MYSQLPORT") ?? "3306";
+        var db = Environment.GetEnvironmentVariable("MYSQLDATABASE") ?? "railway";
+        var user = Environment.GetEnvironmentVariable("MYSQLUSER") ?? "root";
+        var pass = Environment.GetEnvironmentVariable("MYSQLPASSWORD");
+        connectionString = $"Server={host};Port={port};Database={db};User={user};Password={pass};AllowPublicKeyRetrieval=True;SSL Mode=None;";
+        source = "Individual Env Vars";
+    }
 }
 
-// 輸出精確診斷 (遮蔽密碼)
 Console.WriteLine($"[Backend] 連線來源: {source}");
 if (!string.IsNullOrEmpty(connectionString))
 {
     var masked = connectionString.Contains("Password=") 
         ? connectionString.Substring(0, connectionString.IndexOf("Password=") + 9) + "********;" 
         : connectionString;
-    Console.WriteLine($"[Backend] 連線字串: {masked}");
+    Console.WriteLine($"[Backend] 連線資訊: {masked}");
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
