@@ -39,10 +39,6 @@ ehthumbs.db
 # --- AI & Artifacts ---
 .gemini/
 **/tmp_*
-**/*.webp
-**/*.png
-**/*.jpg
-**/*.jpeg
 **/logs.txt
 **/tmp_logs.txt
 **/tmp_probedb.js
