@@ -73,8 +73,8 @@ string source = "Unknown";
 // 優先級 1: 使用個別組件組合 (最穩定)
 if (!string.IsNullOrEmpty(host))
 {
-    connectionString = $"Server={host};Port={port};Database={db};User={user};Password={pass};AllowPublicKeyRetrieval=True;SSL Mode=None;";
-    source = "Railway Components";
+    connectionString = $"Server={host};Port={port};Initial Catalog={db};User ID={user};Password={pass};AllowPublicKeyRetrieval=True;SSL Mode=None;Charset=utf8mb4;";
+    source = "Railway Components (Refined)";
 }
 // 優先級 2: 解析 MYSQL_URL
 else if (!string.IsNullOrEmpty(connUrl))
@@ -83,8 +83,8 @@ else if (!string.IsNullOrEmpty(connUrl))
         var uri = new Uri(connUrl);
         var dbName = uri.PathAndQuery.TrimStart('/');
         var userInfo = uri.UserInfo.Split(':');
-        connectionString = $"Server={uri.Host};Port={uri.Port};Database={dbName};User={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};AllowPublicKeyRetrieval=True;SSL Mode=None;";
-        source = "MYSQL_URL";
+        connectionString = $"Server={uri.Host};Port={uri.Port};Initial Catalog={dbName};User ID={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};AllowPublicKeyRetrieval=True;SSL Mode=None;Charset=utf8mb4;";
+        source = "MYSQL_URL (Refined)";
     } catch { /* parse error */ }
 }
 // 優先級 3: 本地備援
