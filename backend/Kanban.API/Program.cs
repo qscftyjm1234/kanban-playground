@@ -120,9 +120,11 @@ using (var scope = app.Services.CreateScope())
 {
     try 
     {
+        Console.WriteLine("[Backend] 啟動中... 版本 V5 (Cascade Fix Loaded)");
+        Console.WriteLine("[Backend] 正在執行資料庫遷移...");
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.Database.Migrate();
-        Console.WriteLine("[Backend] 資料庫遷移完成。");
+        Console.WriteLine("[Backend] 資料庫遷移成功。");
     }
     catch (Exception ex)
     {
