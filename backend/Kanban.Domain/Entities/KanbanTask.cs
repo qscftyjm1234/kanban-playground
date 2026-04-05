@@ -15,7 +15,7 @@ namespace Kanban.Domain.Entities
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // 外鍵與導航屬性
-        public Guid? BoardId { get; set; }
+        public Guid BoardId { get; set; }
         
         [JsonIgnore]
         public virtual Board? Board { get; set; }
