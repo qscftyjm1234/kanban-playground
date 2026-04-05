@@ -62,9 +62,6 @@ builder.Services.AddCors(options =>
 // 資料庫設定
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// 資料庫設定
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
 // 終極方案：解析 Railway 官方 MYSQL_URL (mysql://user:pass@host:port/db)
 var mysqlUrl = Environment.GetEnvironmentVariable("MYSQL_URL");
 if (!string.IsNullOrEmpty(mysqlUrl))
