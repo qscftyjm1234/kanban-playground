@@ -1,0 +1,42 @@
+services:
+  kanban_db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: kanban_db
+      MYSQL_ROOT_HOST: "%"
+    ports:
+      - "3309:3306"
+    volumes:
+      - kanban_mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+
+  kanban_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=kanban_db;Database=kanban_db;User=root;Password=root;Port=3306;CharSet=utf8mb4;
+    ports:
+      - "5003:80"
+    depends_on:
+      - kanban_db
+
+  kanban_frontend:
+    build:
+      context: ./frontend/kanban-frontend
+      dockerfile: Dockerfile.dev
+    restart: always
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./frontend/kanban-frontend:/app
+      - /app/node_modules
+    depends_on:
+      - kanban_backend
+
+volumes:
+  kanban_mysql_data:

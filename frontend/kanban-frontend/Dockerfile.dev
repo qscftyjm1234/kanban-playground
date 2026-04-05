@@ -1,0 +1,8 @@
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 5173
+# --host 讓 Vite 監聽所有 IP，Docker 外部才能存取
+CMD ["npm", "run", "dev", "--", "--host"]

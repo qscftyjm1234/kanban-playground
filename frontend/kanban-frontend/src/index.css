@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --bg-slate-50: #f8fafc;
+  --bg-slate-900: #0f172a;
+}
+
+body {
+  font-family: var(--font-sans);
+  @apply bg-slate-50 text-slate-900 transition-colors duration-300;
+}
+
+body.dark {
+  @apply bg-slate-950 text-white;
+}
+
+/* Kanban 特定樣式 */
+.kanban-board {
+  height: calc(100vh - 120px);
+  min-height: 500px;
+}
+
+.kanban-column {
+  min-width: 300px;
+  max-width: 350px;
+}
+
+.kanban-card-placeholder {
+  @apply bg-blue-50/50 border-2 border-dashed border-blue-200 rounded-xl my-2;
+}
+
+/* 隱藏滾動條但保持功能 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
