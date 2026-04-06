@@ -16,7 +16,8 @@ import 'dayjs/locale/zh-tw';
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('kanban-theme');
-    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // 預設為明亮模式，除非使用者之前有手動切換過
+    return saved ? saved === 'dark' : false;
   });
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);

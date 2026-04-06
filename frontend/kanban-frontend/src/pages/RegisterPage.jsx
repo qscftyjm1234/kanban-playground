@@ -87,7 +87,7 @@ export default function RegisterPage({ isDarkMode }) {
                 loading={loading}
                 className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-2xl text-lg font-black border-none shadow-xl shadow-blue-500/20 flex items-center justify-center gap-2"
               >
-                立即加入專案 <ArrowRight size={20} />
+                立即註冊 <ArrowRight size={20} />
               </Button>
             </Form.Item>
 
