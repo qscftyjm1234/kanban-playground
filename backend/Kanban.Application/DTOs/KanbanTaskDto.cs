@@ -18,7 +18,7 @@ namespace Kanban.Application.DTOs
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Status { get; set; } = "TODO";
-        public Guid? BoardId { get; set; }
+        public Guid BoardId { get; set; }
         public double SortOrder { get; set; }
         public List<LabelIdDto>? Labels { get; set; } = new();
         public List<CreateChecklistItemDto>? ChecklistItems { get; set; } = new();
@@ -36,7 +36,7 @@ namespace Kanban.Application.DTOs
         public string Description { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public double SortOrder { get; set; }
-        public Guid? BoardId { get; set; }
+        public Guid BoardId { get; set; }
         public List<LabelIdDto>? Labels { get; set; } = new();
     }
 
