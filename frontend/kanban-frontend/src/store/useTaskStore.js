@@ -99,7 +99,7 @@ const useTaskStore = create((set, get) => ({
   },
 
   // 新增任務 (歸屬於目前看板)
-  addTask: async (title, description, status = 'TODO', selectedLabels = [], checklistItems = []) => {
+  addTask: async (title, description, status = 'TODO', selectedLabels = []) => {
     try {
       const newTask = {
         title,
@@ -107,50 +107,13 @@ const useTaskStore = create((set, get) => ({
         status,
         boardId: get().selectedBoardId,
         sortOrder: get().tasks.filter(t => t.status === status).length,
-        labels: selectedLabels,
-        checklistItems
+        labels: selectedLabels
       };
       const res = await taskApi.create(newTask);
       set((state) => ({ tasks: [...state.tasks, res] }));
       return res;
     } catch (error) {
       console.error('新增任務失敗', error);
-    }
-  },
-
-  // --- 子任務管理 ---
-  addChecklistItem: async (taskId, title) => {
-    try {
-      const res = await taskApi.addChecklistItem(taskId, { title });
-      set((state) => ({
-        tasks: state.tasks.map(t => 
-          t.id === taskId 
-            ? { ...t, checklistItems: [...(t.checklistItems || []), res] } 
-            : t
-        )
-      }));
-    } catch (error) {
-      console.error('新增子任務失敗', error);
-    }
-  },
-
-  toggleChecklistItem: async (taskId, itemId, isCompleted) => {
-    try {
-      await taskApi.toggleChecklistItem(itemId, isCompleted);
-      set((state) => ({
-        tasks: state.tasks.map(t => 
-          t.id === taskId 
-            ? { 
-                ...t, 
-                checklistItems: t.checklistItems.map(item => 
-                  item.id === itemId ? { ...item, isCompleted } : item
-                ) 
-              } 
-            : t
-        )
-      }));
-    } catch (error) {
-      console.error('更新子任務失敗', error);
     }
   },
 

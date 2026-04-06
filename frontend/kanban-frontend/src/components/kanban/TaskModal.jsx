@@ -24,9 +24,6 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
   // 從 Store 中尋找目前正在編輯的任務
   const task = tasks.find(t => t.id === taskId) || null;
 
-  const [localChecklist, setLocalChecklist] = useState([]); // 統一用於彈窗內的「暫存」
-  const [newItemTitle, setNewItemTitle] = useState('');
-
   // 初始化資料與表單
   useEffect(() => {
     if (!open) return;
@@ -38,12 +35,9 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
         ...task,
         labelIds
       });
-      // 關鍵修復：編輯模式下，將現有子項目複製到緩衝區
-      setLocalChecklist(task.checklistItems ? [...task.checklistItems] : []); 
     } else {
       form.resetFields();
       form.setFieldsValue({ status: 'TODO' });
-      setLocalChecklist([]);
     }
   }, [open, taskId, task, form, fetchLabels]);
 
@@ -51,52 +45,16 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
     const { labelIds, ...rest } = values;
     const selectedLabels = labelIds?.map(id => ({ id })) || [];
 
-    // 統一從緩衝區提交子項目
-    const checklistData = localChecklist.map(item => ({
-      id: item.id && !item.id.toString().startsWith('local-') ? item.id : null,
-      title: item.title,
-      isCompleted: item.isCompleted || false
-    }));
-
     if (task) {
       await updateTask(task.id, { 
         ...rest, 
         labels: selectedLabels,
-        checklistItems: checklistData // 傳送完整清單執行 Diff Sync
+        checklistItems: []
       });
     } else {
-      await addTask(values.title, values.description, values.status, selectedLabels, checklistData);
+      await addTask(values.title, values.description, values.status, selectedLabels, []);
     }
     onCancel();
-  };
-
-  const handleAddCheckItem = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    if (!newItemTitle.trim()) return;
-
-    const title = newItemTitle.trim();
-    setNewItemTitle(''); 
-
-    // 不論新舊任務，統一加入緩衝區，暫不呼叫 API
-    setLocalChecklist([...localChecklist, {
-      id: `local-${Date.now()}`,
-      title,
-      isCompleted: false
-    }]);
-  };
-
-  const handleToggleLocalItem = (id) => {
-    setLocalChecklist(localChecklist.map(item =>
-      item.id === id ? { ...item, isCompleted: !item.isCompleted } : item
-    ));
-  };
-
-  const handleDeleteLocalItem = (id) => {
-    setLocalChecklist(localChecklist.filter(item => item.id !== id));
   };
 
   // 統一輸入框與選擇器高度 (48px)
@@ -197,82 +155,6 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
             className={cn(commonInputClass, "py-3 min-h-[120px] leading-relaxed")}
           />
         </Form.Item>
-
-        <div className="pt-2">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <ListTodo className="w-5 h-5 text-blue-500" />
-              <span className={cn("font-bold text-base", { "text-white": isDarkMode })}>
-                子項目清單
-              </span>
-              <AntdTag className="ml-1 opacity-60">
-                {(task?.checklistItems?.length || 0) + localChecklist.length}
-              </AntdTag>
-            </div>
-          </div>
-
-          <div className="space-y-1 mb-4 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
-            {localChecklist.map((item) => (
-              <div
-                key={item.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleLocalItem(item.id);
-                }}
-                className={cn(
-                  "group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border border-transparent hover:border-blue-500/30 hover:bg-blue-50/10 dark:hover:border-blue-500/30",
-                  { "opacity-50 grayscale": item.isCompleted }
-                )}
-              >
-                <Checkbox
-                  checked={item.isCompleted}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={() => handleToggleLocalItem(item.id)}
-                />
-                <span className={cn("flex-1 text-sm font-bold", { "text-white": isDarkMode, "text-slate-900": !isDarkMode, "line-through opacity-40": item.isCompleted })}>
-                  {item.title}
-                </span>
-                <Button
-                  type="text"
-                  size="small"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteLocalItem(item.id);
-                  }}
-                  icon={<MoreHorizontal className="w-4 h-4 text-slate-400" />}
-                />
-              </div>
-            ))}
-            
-            {localChecklist.length === 0 && (
-              <div className="py-8 text-center border-2 border-dashed border-slate-100 rounded-2xl">
-                <p className="text-slate-400 text-sm font-medium">尚無子項目</p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Input
-              placeholder="新增子項目後按 Enter..."
-              value={newItemTitle}
-              onChange={(e) => setNewItemTitle(e.target.value)}
-              onPressEnter={(e) => handleAddCheckItem(e)}
-              className={cn(commonInputClass, "h-11 flex-1")}
-            />
-            <Button
-              type="button"
-              onClick={(e) => handleAddCheckItem(e)}
-              icon={<Plus className="w-5 h-5 text-blue-600" />}
-              className={cn(
-                "h-11 w-11 flex items-center justify-center rounded-xl transition-all duration-300 border-2 shadow-sm",
-                isDarkMode
-                  ? "bg-slate-800 border-slate-700 text-blue-400 hover:border-blue-500 hover:text-blue-300"
-                  : "bg-blue-50 border-blue-100 text-blue-600 hover:border-blue-500 hover:bg-blue-100"
-              )}
-            />
-          </div>
-        </div>
 
         <Divider className="my-8 opacity-40" />
 

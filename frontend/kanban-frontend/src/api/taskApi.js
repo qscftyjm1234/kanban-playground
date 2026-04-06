@@ -30,9 +30,6 @@ const taskApi = {
   // 刪除任務
   delete: (id) => axiosClient.delete(`/tasks/${id}`),
 
-  // --- 子任務 API ---
-  addChecklistItem: (taskId, item) => axiosClient.post(`/tasks/${taskId}/checklist`, item),
-  toggleChecklistItem: (itemId, isCompleted) => axiosClient.patch(`/tasks/checklist/${itemId}`, isCompleted),
 };
 
 export default taskApi;

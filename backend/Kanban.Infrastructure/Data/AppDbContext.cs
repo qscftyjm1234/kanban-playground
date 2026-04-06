@@ -12,7 +12,6 @@ namespace Kanban.Infrastructure.Data
         public DbSet<KanbanTask> Tasks { get; set; }
         public DbSet<Board> Boards { get; set; }
         public DbSet<Label> Labels { get; set; }
-        public DbSet<ChecklistItem> ChecklistItems { get; set; }
         public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -43,16 +42,6 @@ namespace Kanban.Infrastructure.Data
                       .WithMany(l => l.Tasks);
             });
 
-            modelBuilder.Entity<ChecklistItem>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
-                
-                entity.HasOne(e => e.Task)
-                      .WithMany(t => t.ChecklistItems)
-                      .HasForeignKey(e => e.TaskId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
 
             modelBuilder.Entity<Label>(entity =>
             {

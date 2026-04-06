@@ -21,7 +21,5 @@ namespace Kanban.Domain.Entities
         public virtual Board? Board { get; set; }
 
         public virtual ICollection<Label>? Labels { get; set; } = new List<Label>();
-        
-        public virtual ICollection<ChecklistItem>? ChecklistItems { get; set; } = new List<ChecklistItem>();
     }
 }

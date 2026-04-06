@@ -11,9 +11,6 @@ export default function KanbanCard({ task, index, isDarkMode, onEdit }) {
   const [isDragging, setIsDragging] = useState(false);
   const { deleteTask } = useTaskStore();
 
-  const completedCount = task.checklistItems?.filter(i => i.isCompleted).length || 0;
-  const totalCount = task.checklistItems?.length || 0;
-
   const handleDragStart = (e) => {
     setIsDragging(true);
     e.dataTransfer.setData('taskId', task.id);
@@ -115,23 +112,6 @@ export default function KanbanCard({ task, index, isDarkMode, onEdit }) {
           </p>
         </div>
 
-        {/* Progress Bar for Checklist */}
-        {totalCount > 0 && (
-          <div className="mt-1">
-            <div className="flex justify-between items-center mb-1">
-               <span className="text-[10px] font-semibold opacity-50">執行進度</span>
-               <span className="text-[10px] font-bold">{completedCount}/{totalCount}</span>
-            </div>
-            <Progress 
-              percent={Math.round((completedCount / totalCount) * 100)} 
-              showInfo={false} 
-              size="small"
-              strokeColor={isDarkMode ? '#3b82f6' : '#2563eb'}
-              trailColor={isDarkMode ? '#1e293b' : '#f1f5f9'}
-            />
-          </div>
-        )}
-
         <div className={cn(
           "pt-3 mt-1 border-t flex items-center justify-between",
           { "border-slate-700/50": isDarkMode, "border-slate-100": !isDarkMode }
@@ -143,13 +123,6 @@ export default function KanbanCard({ task, index, isDarkMode, onEdit }) {
                 {new Intl.DateTimeFormat('zh-TW', { month: 'long', day: 'numeric' }).format(new Date(task.createdAt))}
               </span>
             </div>
-            
-            {totalCount > 0 && (
-              <div className="flex items-center gap-1 text-[11px] font-medium opacity-60">
-                <ListTodo className="w-3 h-3" />
-                <span>{completedCount}/{totalCount}</span>
-              </div>
-            )}
           </div>
 
           <div className="flex -space-x-2">

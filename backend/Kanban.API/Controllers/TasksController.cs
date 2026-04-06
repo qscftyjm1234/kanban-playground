@@ -17,11 +17,10 @@ public class TasksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<KanbanTask>>> GetTasks([FromQuery] Guid? boardId)
+    public async Task<ActionResult<IEnumerable<KanbanTaskDto>>> GetTasks([FromQuery] Guid? boardId)
     {
         var query = _context.Tasks
             .Include(t => t.Labels)
-            .Include(t => t.ChecklistItems)
             .AsQueryable();
 
         if (boardId.HasValue)
@@ -29,11 +28,30 @@ public class TasksController : ControllerBase
             query = query.Where(t => t.BoardId == boardId.Value);
         }
 
-        return await query.OrderBy(t => t.SortOrder).ToListAsync();
+        var tasks = await query.OrderBy(t => t.SortOrder).ToListAsync();
+        
+        // 手動映射為 DTO 以確保 JSON 結構穩定
+        return tasks.Select(t => new KanbanTaskDto
+        {
+            Id = t.Id,
+            Title = t.Title,
+            Description = t.Description,
+            Status = t.Status,
+            SortOrder = t.SortOrder,
+            CreatedAt = t.CreatedAt,
+            UpdatedAt = t.UpdatedAt,
+            BoardId = t.BoardId,
+            Labels = t.Labels?.Select(l => new LabelDto
+            {
+                Id = l.Id,
+                Name = l.Name,
+                Color = l.Color
+            }).ToList()
+        }).ToList();
     }
 
     [HttpPost]
-    public async Task<ActionResult<KanbanTask>> CreateTask(CreateTaskDto dto)
+    public async Task<ActionResult<KanbanTaskDto>> CreateTask(CreateTaskDto dto)
     {
         var task = new KanbanTask
         {
@@ -59,34 +77,33 @@ public class TasksController : ControllerBase
             }
         }
 
-        // 處理子任務清單
-        if (dto.ChecklistItems != null && dto.ChecklistItems.Any())
-        {
-            foreach (var itemDto in dto.ChecklistItems)
-            {
-                task.ChecklistItems.Add(new ChecklistItem
-                {
-                    Id = Guid.NewGuid(),
-                    TaskId = task.Id,
-                    Title = itemDto.Title,
-                    IsCompleted = false
-                });
-            }
-        }
-
         _context.Tasks.Add(task);
         await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetTasks), new { id = task.Id }, task);
+
+        // 顯性加載標籤以確保映射 DTO 時包含實體數據
+        await _context.Entry(task).Collection(t => t.Labels).LoadAsync();
+
+        return Ok(new KanbanTaskDto
+        {
+            Id = task.Id,
+            Title = task.Title,
+            Description = task.Description,
+            Status = task.Status,
+            SortOrder = task.SortOrder,
+            CreatedAt = task.CreatedAt,
+            UpdatedAt = task.UpdatedAt,
+            BoardId = task.BoardId,
+            Labels = task.Labels?.Select(l => new LabelDto { Id = l.Id, Name = l.Name, Color = l.Color }).ToList()
+        });
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTask(Guid id, UpdateTaskDto dto)
+    public async Task<ActionResult<KanbanTaskDto>> UpdateTask(Guid id, UpdateTaskDto dto)
     {
         if (id != dto.Id) return BadRequest("ID 不一致");
         
         var existing = await _context.Tasks
             .Include(t => t.Labels)
-            .Include(t => t.ChecklistItems)
             .FirstOrDefaultAsync(t => t.Id == id);
 
         if (existing == null) return NotFound();
@@ -111,80 +128,23 @@ public class TasksController : ControllerBase
             }
         }
 
-        // 更新子項目同步 (Diff Sync)
-        if (dto.ChecklistItems != null)
-        {
-            // 1. 刪除不在 DTO 中的項目
-            var dtoIds = dto.ChecklistItems.Where(di => di.Id.HasValue).Select(di => di.Id!.Value).ToList();
-            var itemsToRemove = existing.ChecklistItems.Where(ei => !dtoIds.Contains(ei.Id)).ToList();
-            foreach (var item in itemsToRemove)
-            {
-                existing.ChecklistItems.Remove(item);
-            }
-
-            // 2. 更新或新增項目
-            foreach (var itemDto in dto.ChecklistItems)
-            {
-                if (itemDto.Id.HasValue)
-                {
-                    // 更新現有項目
-                    var existingItem = existing.ChecklistItems.FirstOrDefault(ei => ei.Id == itemDto.Id.Value);
-                    if (existingItem != null)
-                    {
-                        existingItem.Title = itemDto.Title;
-                        existingItem.IsCompleted = itemDto.IsCompleted;
-                    }
-                }
-                else
-                {
-                    // 新增項目
-                    existing.ChecklistItems.Add(new ChecklistItem
-                    {
-                        Id = Guid.NewGuid(),
-                        TaskId = existing.Id,
-                        Title = itemDto.Title,
-                        IsCompleted = itemDto.IsCompleted
-                    });
-                }
-            }
-        }
-
         await _context.SaveChangesAsync();
-        return NoContent();
-    }
-
-    // --- 子任務管理 (Checklist Hooks) ---
-
-    [HttpPost("{taskId}/checklist")]
-    public async Task<ActionResult<ChecklistItem>> AddChecklistItem(Guid taskId, [FromBody] CreateChecklistItemDto dto)
-    {
-        var task = await _context.Tasks.FindAsync(taskId);
-        if (task == null) return NotFound();
-
-        var item = new ChecklistItem
-        {
-            Id = Guid.NewGuid(),
-            TaskId = taskId,
-            Title = dto.Title,
-            IsCompleted = false
-        };
         
-        _context.ChecklistItems.Add(item);
-        await _context.SaveChangesAsync();
-
-        return Ok(item);
+        return Ok(new KanbanTaskDto
+        {
+            Id = existing.Id,
+            Title = existing.Title,
+            Description = existing.Description,
+            Status = existing.Status,
+            SortOrder = existing.SortOrder,
+            CreatedAt = existing.CreatedAt,
+            UpdatedAt = existing.UpdatedAt,
+            BoardId = existing.BoardId,
+            Labels = existing.Labels?.Select(l => new LabelDto { Id = l.Id, Name = l.Name, Color = l.Color }).ToList()
+        });
     }
 
-    [HttpPatch("checklist/{itemId}")]
-    public async Task<IActionResult> ToggleChecklistItem(Guid itemId, [FromBody] bool isCompleted)
-    {
-        var item = await _context.ChecklistItems.FindAsync(itemId);
-        if (item == null) return NotFound();
-
-        item.IsCompleted = isCompleted;
-        await _context.SaveChangesAsync();
-        return NoContent();
-    }
+    // --- 子任務管理 (已廢棄) ---
 
     [HttpPatch("{id}/position")]
     public async Task<IActionResult> UpdatePosition(Guid id, [FromBody] PositionUpdateDto dto)

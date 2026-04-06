@@ -11,6 +11,14 @@ namespace Kanban.Application.DTOs
         public double SortOrder { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public List<LabelDto>? Labels { get; set; } = new();
+    }
+
+    public class LabelDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
     }
 
     public class CreateTaskDto
@@ -21,7 +29,6 @@ namespace Kanban.Application.DTOs
         public Guid BoardId { get; set; }
         public double SortOrder { get; set; }
         public List<LabelIdDto>? Labels { get; set; } = new();
-        public List<CreateChecklistItemDto>? ChecklistItems { get; set; } = new();
     }
 
     public class LabelIdDto
@@ -38,18 +45,5 @@ namespace Kanban.Application.DTOs
         public double SortOrder { get; set; }
         public Guid BoardId { get; set; }
         public List<LabelIdDto>? Labels { get; set; } = new();
-        public List<UpdateChecklistItemDto>? ChecklistItems { get; set; } = new();
-    }
-
-    public class CreateChecklistItemDto
-    {
-        public string Title { get; set; } = string.Empty;
-    }
-
-    public class UpdateChecklistItemDto
-    {
-        public Guid? Id { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public bool IsCompleted { get; set; }
     }
 }
