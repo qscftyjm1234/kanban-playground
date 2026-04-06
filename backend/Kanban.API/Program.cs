@@ -126,7 +126,7 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine($"[Backend] 執行錯誤: {ex.Message}");
     }
 }
-// REBUILD_ID_V9_FORCE_1420
+// REBUILD_ID_V15_FORCE_0406_1505
 
 if (app.Environment.IsDevelopment())
 {
