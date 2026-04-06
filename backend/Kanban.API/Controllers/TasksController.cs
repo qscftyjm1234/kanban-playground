@@ -86,6 +86,7 @@ public class TasksController : ControllerBase
         
         var existing = await _context.Tasks
             .Include(t => t.Labels)
+            .Include(t => t.ChecklistItems)
             .FirstOrDefaultAsync(t => t.Id == id);
 
         if (existing == null) return NotFound();
@@ -110,6 +111,44 @@ public class TasksController : ControllerBase
             }
         }
 
+        // 更新子項目同步 (Diff Sync)
+        if (dto.ChecklistItems != null)
+        {
+            // 1. 刪除不在 DTO 中的項目
+            var dtoIds = dto.ChecklistItems.Where(di => di.Id.HasValue).Select(di => di.Id!.Value).ToList();
+            var itemsToRemove = existing.ChecklistItems.Where(ei => !dtoIds.Contains(ei.Id)).ToList();
+            foreach (var item in itemsToRemove)
+            {
+                existing.ChecklistItems.Remove(item);
+            }
+
+            // 2. 更新或新增項目
+            foreach (var itemDto in dto.ChecklistItems)
+            {
+                if (itemDto.Id.HasValue)
+                {
+                    // 更新現有項目
+                    var existingItem = existing.ChecklistItems.FirstOrDefault(ei => ei.Id == itemDto.Id.Value);
+                    if (existingItem != null)
+                    {
+                        existingItem.Title = itemDto.Title;
+                        existingItem.IsCompleted = itemDto.IsCompleted;
+                    }
+                }
+                else
+                {
+                    // 新增項目
+                    existing.ChecklistItems.Add(new ChecklistItem
+                    {
+                        Id = Guid.NewGuid(),
+                        TaskId = existing.Id,
+                        Title = itemDto.Title,
+                        IsCompleted = itemDto.IsCompleted
+                    });
+                }
+            }
+        }
+
         await _context.SaveChangesAsync();
         return NoContent();
     }
@@ -117,7 +156,7 @@ public class TasksController : ControllerBase
     // --- 子任務管理 (Checklist Hooks) ---
 
     [HttpPost("{taskId}/checklist")]
-    public async Task<ActionResult<ChecklistItem>> AddChecklistItem(Guid taskId, CreateChecklistItemDto dto)
+    public async Task<ActionResult<ChecklistItem>> AddChecklistItem(Guid taskId, [FromBody] CreateChecklistItemDto dto)
     {
         var task = await _context.Tasks.FindAsync(taskId);
         if (task == null) return NotFound();

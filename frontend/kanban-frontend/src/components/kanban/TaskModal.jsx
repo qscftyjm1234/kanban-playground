@@ -21,13 +21,13 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
     toggleChecklistItem
   } = useTaskStore();
 
-  // 從 Store 中尋找目前正在編輯的任務，確保資料是最新的
+  // 從 Store 中尋找目前正在編輯的任務
   const task = tasks.find(t => t.id === taskId) || null;
 
-  const [localChecklist, setLocalChecklist] = useState([]); // 用於「建立模式」或「暫存」
+  const [localChecklist, setLocalChecklist] = useState([]); // 統一用於彈窗內的「暫存」
   const [newItemTitle, setNewItemTitle] = useState('');
 
-  // 初始化資料與表單 (僅在開啟瞬間或 taskId 變動時執行)
+  // 初始化資料與表單
   useEffect(() => {
     if (!open) return;
     fetchLabels();
@@ -38,29 +38,39 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
         ...task,
         labelIds
       });
-      setLocalChecklist([]); 
+      // 關鍵修復：編輯模式下，將現有子項目複製到緩衝區
+      setLocalChecklist(task.checklistItems ? [...task.checklistItems] : []); 
     } else {
       form.resetFields();
       form.setFieldsValue({ status: 'TODO' });
       setLocalChecklist([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, taskId, form]);
+  }, [open, taskId, task, form, fetchLabels]);
 
   const onFinish = async (values) => {
     const { labelIds, ...rest } = values;
     const selectedLabels = labelIds?.map(id => ({ id })) || [];
 
+    // 統一從緩衝區提交子項目
+    const checklistData = localChecklist.map(item => ({
+      id: item.id && !item.id.toString().startsWith('local-') ? item.id : null,
+      title: item.title,
+      isCompleted: item.isCompleted || false
+    }));
+
     if (task) {
-      await updateTask(task.id, { ...rest, labels: selectedLabels });
+      await updateTask(task.id, { 
+        ...rest, 
+        labels: selectedLabels,
+        checklistItems: checklistData // 傳送完整清單執行 Diff Sync
+      });
     } else {
-      const checklistItems = localChecklist.map(item => ({ title: item.title }));
-      await addTask(values.title, values.description, values.status, selectedLabels, checklistItems);
+      await addTask(values.title, values.description, values.status, selectedLabels, checklistData);
     }
     onCancel();
   };
 
-  const handleAddCheckItem = async (e) => {
+  const handleAddCheckItem = (e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -69,23 +79,24 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
     if (!newItemTitle.trim()) return;
 
     const title = newItemTitle.trim();
-    setNewItemTitle(''); // 立即清空，提供即時感
+    setNewItemTitle(''); 
 
-    if (task) {
-      await addChecklistItem(task.id, title);
-    } else {
-      setLocalChecklist([...localChecklist, {
-        id: Date.now().toString(),
-        title,
-        isCompleted: false
-      }]);
-    }
+    // 不論新舊任務，統一加入緩衝區，暫不呼叫 API
+    setLocalChecklist([...localChecklist, {
+      id: `local-${Date.now()}`,
+      title,
+      isCompleted: false
+    }]);
   };
 
   const handleToggleLocalItem = (id) => {
     setLocalChecklist(localChecklist.map(item =>
       item.id === id ? { ...item, isCompleted: !item.isCompleted } : item
     ));
+  };
+
+  const handleDeleteLocalItem = (id) => {
+    setLocalChecklist(localChecklist.filter(item => item.id !== id));
   };
 
   // 統一輸入框與選擇器高度 (48px)
@@ -126,7 +137,7 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
         className="space-y-5"
       >
         <Form.Item
-          label={<span className={cn("font-bold text-sm uppercase tracking-wider", { "text-slate-500": isDarkMode, "text-slate-400": !isDarkMode })}>標題</span>}
+          label={<span className={cn("font-bold text-sm uppercase tracking-wider", { "text-slate-500": isDarkMode, "text-slate-500/80": !isDarkMode })}>標題</span>}
           name="title"
           rules={[{ required: true, message: '請輸入標題' }]}
         >
@@ -135,7 +146,7 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
 
         <div className="grid grid-cols-2 gap-6">
           <Form.Item
-            label={<span className={cn("font-bold text-sm uppercase tracking-wider", { "text-slate-500": isDarkMode, "text-slate-400": !isDarkMode })}>目前狀態</span>}
+            label={<span className={cn("font-bold text-sm uppercase tracking-wider", { "text-slate-500": isDarkMode, "text-slate-500/80": !isDarkMode })}>目前狀態</span>}
             name="status"
           >
             <Select
@@ -151,7 +162,7 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
           </Form.Item>
 
           <Form.Item
-            label={<span className={cn("font-bold text-sm uppercase tracking-wider", { "text-slate-500": isDarkMode, "text-slate-400": !isDarkMode })}>類別</span>}
+            label={<span className={cn("font-bold text-sm uppercase tracking-wider", { "text-slate-500": isDarkMode, "text-slate-500/80": !isDarkMode })}>類別</span>}
             name="labelIds"
           >
             <Select
@@ -177,7 +188,7 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
         </div>
 
         <Form.Item
-          label={<span className={cn("font-bold text-sm uppercase tracking-wider", { "text-slate-500": isDarkMode, "text-slate-400": !isDarkMode })}>描述</span>}
+          label={<span className={cn("font-bold text-sm uppercase tracking-wider", { "text-slate-500": isDarkMode, "text-slate-500/80": !isDarkMode })}>描述</span>}
           name="description"
         >
           <Input.TextArea
@@ -200,32 +211,7 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
             </div>
           </div>
 
-          <div className="space-y-1 mb-4 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
-            {/* 編輯模式下的 store 子項 */}
-            {task?.checklistItems?.map((item) => (
-              <div
-                key={item.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleChecklistItem(task.id, item.id, !item.isCompleted);
-                }}
-                className={cn(
-                  "group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border border-transparent hover:border-blue-500/30 hover:bg-blue-50/10 dark:hover:border-blue-500/30",
-                  { "opacity-50 grayscale": item.isCompleted }
-                )}
-              >
-                <Checkbox
-                  checked={item.isCompleted}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => toggleChecklistItem(task.id, item.id, e.target.checked)}
-                />
-                <span className={cn("flex-1 text-sm font-bold text-black dark:text-white", { "line-through": item.isCompleted })}>
-                  {item.title}
-                </span>
-              </div>
-            ))}
-
-            {/* 建立模式或暫存下的本地子項 */}
+          <div className="space-y-1 mb-4 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
             {localChecklist.map((item) => (
               <div
                 key={item.id}
@@ -243,11 +229,27 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
                   onClick={(e) => e.stopPropagation()}
                   onChange={() => handleToggleLocalItem(item.id)}
                 />
-                <span className={cn("flex-1 text-sm font-bold text-black dark:text-white", { "line-through": item.isCompleted })}>
+                <span className={cn("flex-1 text-sm font-bold", { "text-white": isDarkMode, "text-slate-900": !isDarkMode, "line-through opacity-40": item.isCompleted })}>
                   {item.title}
                 </span>
+                <Button
+                  type="text"
+                  size="small"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteLocalItem(item.id);
+                  }}
+                  icon={<MoreHorizontal className="w-4 h-4 text-slate-400" />}
+                />
               </div>
             ))}
+            
+            {localChecklist.length === 0 && (
+              <div className="py-8 text-center border-2 border-dashed border-slate-100 rounded-2xl">
+                <p className="text-slate-400 text-sm font-medium">尚無子項目</p>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">

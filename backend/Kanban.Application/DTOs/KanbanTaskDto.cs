@@ -38,10 +38,18 @@ namespace Kanban.Application.DTOs
         public double SortOrder { get; set; }
         public Guid BoardId { get; set; }
         public List<LabelIdDto>? Labels { get; set; } = new();
+        public List<UpdateChecklistItemDto>? ChecklistItems { get; set; } = new();
     }
 
     public class CreateChecklistItemDto
     {
         public string Title { get; set; } = string.Empty;
+    }
+
+    public class UpdateChecklistItemDto
+    {
+        public Guid? Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public bool IsCompleted { get; set; }
     }
 }

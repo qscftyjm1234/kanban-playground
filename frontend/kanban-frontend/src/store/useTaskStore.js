@@ -182,15 +182,23 @@ const useTaskStore = create((set, get) => ({
     const task = originalTasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const updatedTask = { ...task, ...updates };
+    // 先在前端樂觀更新 (Optimistic Update)
+    const optimisticTask = { ...task, ...updates };
+    set((state) => ({
+      tasks: state.tasks.map((t) => (t.id === taskId ? optimisticTask : t))
+    }));
 
     try {
-      await taskApi.update(taskId, updatedTask);
-      set((state) => ({
-        tasks: state.tasks.map((t) => (t.id === taskId ? updatedTask : t))
-      }));
+      const res = await taskApi.update(taskId, optimisticTask);
+      // 如果回傳了更新後的實例 (Ok)，則以回傳值為準 (修正 ID 同步)
+      if (res) {
+        set((state) => ({
+          tasks: state.tasks.map((t) => (t.id === taskId ? res : t))
+        }));
+      }
     } catch (error) {
-      console.error('更新任務失敗', error);
+      console.error('更新任務失敗，正在回滾', error);
+      set({ tasks: originalTasks });
     }
   },
 
