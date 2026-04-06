@@ -1,6 +1,7 @@
 using Kanban.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Kanban.API.Services;
+using Kanban.Application.Interfaces;
+using Kanban.Application.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
