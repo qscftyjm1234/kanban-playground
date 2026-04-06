@@ -2,8 +2,12 @@ using System;
 
 namespace Kanban.Application.DTOs
 {
+    /// <summary>
+    /// 待辦事項的資料傳輸物件 (Data Transfer Object)
+    /// 這支檔案定義了 API 回傳給前端展示、或是前端新增資料時「長什麼樣子」。
+    /// </summary>
     public class KanbanTaskDto
-    {
+{
         public Guid Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;

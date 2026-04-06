@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Form, Input, Select, Button, Checkbox, Divider, message, Tag as AntdTag } from 'antd';
 import { cn } from '../../lib/utils';
 import { ListTodo, Plus, Tag as TagIcon, Sparkles, MoreHorizontal } from 'lucide-react';
-import aiApi from '../../api/aiApi';
 import useTaskStore from '../../store/useTaskStore';
 
 /**
@@ -46,8 +45,8 @@ export default function TaskModal({ open, onCancel, taskId, isDarkMode }) {
     const selectedLabels = labelIds?.map(id => ({ id })) || [];
 
     if (task) {
-      await updateTask(task.id, { 
-        ...rest, 
+      await updateTask(task.id, {
+        ...rest,
         labels: selectedLabels,
         checklistItems: []
       });

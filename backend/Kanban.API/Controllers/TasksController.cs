@@ -6,7 +6,7 @@ using Kanban.Application.DTOs;
 
 [ApiController]
 [Route("api/[controller]")]
-[Microsoft.AspNetCore.Authorization.Authorize]
+[Microsoft.AspNetCore.Authorization.Authorize] // 強制要求請求必須攜帶有效的 JWT Token 才能訪問
 public class TasksController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -19,6 +19,7 @@ public class TasksController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<KanbanTaskDto>>> GetTasks([FromQuery] Guid? boardId)
     {
+        // 建立查詢基礎，並利用 Include 預先加載 (Eager Loading) 關聯的標籤資料
         var query = _context.Tasks
             .Include(t => t.Labels)
             .AsQueryable();
@@ -30,7 +31,8 @@ public class TasksController : ControllerBase
 
         var tasks = await query.OrderBy(t => t.SortOrder).ToListAsync();
         
-        // 手動映射為 DTO 以確保 JSON 結構穩定
+        // 手動將 Entity (資料庫實體) 映射為 DTO (傳輸物件)
+        // 目的：1. 隱藏敏感欄位 2. 斷開與資料庫框架的直接聯繫 3. 避免 JSON 循環引用的問題
         return tasks.Select(t => new KanbanTaskDto
         {
             Id = t.Id,
