@@ -143,7 +143,7 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine("\n\n>>> [DATABASE_SWEEP_EXECUTING] <<<\n");
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         // 清掉所有東西
-        context.Database.EnsureDeleted();
+        // context.Database.EnsureDeleted(); // [手動關閉] 為了保留使用者自備的假資料，不再每次啟動都清空資料庫
         // 將設計的實體模型轉移到資料庫
         context.Database.Migrate();       
         Console.WriteLine("[Backend] 資料庫重置與遷移成功。");

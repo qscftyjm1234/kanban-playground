@@ -34,13 +34,28 @@ function App() {
     }
   }, [isDarkMode]);
 
+  // --- [前端對比] 就像是在 React 頂層掛一個「保全系統」 ---
+  // 這段 useEffect 會一直盯著網址跟登入狀態，如果不符合規則就直接「踢人」或「帶人走」。
+  useEffect(() => {
+    // 取得當前網址路徑 (不含參數)
+    const currentPath = window.location.pathname;
+    const isAuthPath = currentPath === '/login' || currentPath === '/register';
+
+    if (!isAuthenticated && !isAuthPath) {
+      // 情況 A：沒登入，卻想進去首頁 -> 踢去登入頁
+      console.log("[AuthGuard] 未登入，導向登入頁面");
+      window.location.href = '/login';
+    } else if (isAuthenticated && isAuthPath) {
+      // 情況 B：已經登入，卻想手動打網址回登入頁 -> 彈回首頁
+      console.log("[AuthGuard] 已登入，阻止進入驗證頁面");
+      window.location.href = '/';
+    }
+  }, [isAuthenticated]);
+
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
   
-  // 檢查目前是否為「非導航頁面」(如登入或註冊)
-  const pathname = window.location.pathname;
-  const isAuthPage = pathname === '/login' || pathname === '/register';
-  // 僅在「已授權」且「非登入/註冊頁面」時顯示佈局
-  const showDashboardLayout = isAuthenticated && !isAuthPage;
+  // 僅在「已授權」且「非登入/註冊頁面」時顯示佈局 (側邊欄、頂欄)
+  const showDashboardLayout = isAuthenticated && window.location.pathname !== '/login' && window.location.pathname !== '/register';
 
   return (
     <ConfigProvider
