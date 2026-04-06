@@ -11,6 +11,7 @@ namespace Kanban.Application.DTOs
         public double SortOrder { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public Guid BoardId { get; set; }
         public List<LabelDto>? Labels { get; set; } = new();
     }
 
