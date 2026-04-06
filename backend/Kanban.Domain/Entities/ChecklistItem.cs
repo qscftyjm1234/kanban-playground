@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace Kanban.Domain.Entities
 {
@@ -11,6 +12,7 @@ namespace Kanban.Domain.Entities
         public int SortOrder { get; set; } = 0;
 
         // 導航屬性
+        [JsonIgnore]
         public virtual KanbanTask? Task { get; set; }
     }
 }

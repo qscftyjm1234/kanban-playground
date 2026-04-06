@@ -20,10 +20,8 @@ namespace Kanban.Domain.Entities
         [JsonIgnore]
         public virtual Board? Board { get; set; }
 
-        [JsonIgnore]
         public virtual ICollection<Label>? Labels { get; set; } = new List<Label>();
         
-        [JsonIgnore]
         public virtual ICollection<ChecklistItem>? ChecklistItems { get; set; } = new List<ChecklistItem>();
     }
 }

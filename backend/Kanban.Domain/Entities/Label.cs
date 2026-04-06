@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Kanban.Domain.Entities
 {
@@ -10,6 +11,7 @@ namespace Kanban.Domain.Entities
         public string Color { get; set; } = string.Empty; // Hex color
 
         // 多對多導航屬性
+        [JsonIgnore]
         public virtual ICollection<KanbanTask>? Tasks { get; set; } = new List<KanbanTask>();
     }
 }
