@@ -18,6 +18,11 @@ Console.WriteLine("#################################################\n\n");
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- 動態 PORT 綁定 (針對 Railway 502 修復) ---
+var port = Environment.GetEnvironmentVariable("PORT") ?? "80";
+builder.WebHost.UseUrls($"http://*:{port}");
+// ----------------------------------------------
+
 // 三層防護資料庫連線解析引擎
 string? connectionString = null;
 string source = "Default appsettings.json";
