@@ -120,10 +120,11 @@ using (var scope = app.Services.CreateScope())
 {
     try 
     {
-        Console.WriteLine("[Backend] 啟動中... 版本 V5 (Cascade Fix Loaded)");
-        Console.WriteLine("[Backend] 正在執行資料庫遷移...");
+        Console.WriteLine("[Backend] 啟動中... 版本 V6 (Bruteforce Clean Mode)");
+        Console.WriteLine("[Backend] 正在執行資料庫暴力重置與遷移...");
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        context.Database.Migrate();
+        context.Database.EnsureDeleted(); // 強制清空現有表格殘骸
+        context.Database.Migrate();       // 重新建立正確結構
         Console.WriteLine("[Backend] 資料庫遷移成功。");
     }
     catch (Exception ex)
