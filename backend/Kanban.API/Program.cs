@@ -77,7 +77,7 @@ if (!string.IsNullOrEmpty(connectionString))
 
 // 設定資料庫連線 (包含重試機制)
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString!, ServerVersion.AutoDetect(connectionString!),
+    options.UseMySql(connectionString!, new MySqlServerVersion(new Version(8, 0, 31)),
         mySqlOptions => mySqlOptions.EnableRetryOnFailure(
             maxRetryCount: 10,
             maxRetryDelay: TimeSpan.FromSeconds(30),
