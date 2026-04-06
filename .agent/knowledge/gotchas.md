@@ -48,3 +48,21 @@
 ### 4.2 事件冒泡與導航衝突 (Event Bubbling)
 - **現象**: 在按鈕巢狀結構中（如：看板項目的編輯按鈕），點擊子按鈕會同時觸發父層的 `onClick` 事件（如：切換看板）。
 - **實作規範**: 在所有 Sidebar 的操作按鈕點擊函式中，必須呼叫 `e.stopPropagation()`。
+
+---
+
+## 5. 雲端佈署與物理結構衝突 (Deployment & Paths)
+
+### 5.1 幽靈源碼衝突 (Ghost Source Code)
+- **現象**: 修改了代碼並推送到 GitHub，Railway 順利編譯完成，但日誌中完全沒出現預期的變更。
+- **原因**: 專案中存在重複的導航路徑（例如：根目錄有一套 `Kanban.API/`，`backend/` 資料夾裡又有一套）。Railway 預設可能會抓取根目錄那一層。
+- **防禦行動**: 
+    - 保持單一源碼入口，刪除磁碟上冗餘的重複資料夾。
+    - 在 `Program.cs` 頂部加入醒目的「啟動大標誌」日誌 (如：V9_ULTRA_SYNC)，用來判斷目前跑的是哪個版本。
+
+### 5.2 Docker 二進位編譯快取 (Layer Cache Lock)
+- **現象**: 代碼已修正並推送，但 Railway Build Log 顯示 `COPY . . cached`，且日誌依然噴舊報錯。
+- **防禦行動**: 
+    - 手動在 `Program.cs` 最末端編輯加上一個隨機 ID 的註解（如：`// REBUILD_ID_1234`）。
+    - 強迫 Git 偵測到物理字元變動，進而導致 Docker 判定 Layer 失效並重新編譯。
+    - 在 Railway 分頁點擊 **「Clear Build Cache and Redeploy」**。
