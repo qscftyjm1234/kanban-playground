@@ -39,9 +39,12 @@ docker-compose up -d
 ### 第四步：存取服務
 啟動完成後，即可透過瀏覽器存取以下位址：
 
-- **前端網址**：`http://localhost:5173`
-- **後端接口**：`http://localhost:5246`
-- **接口文檔**：`http://localhost:5246/swagger` (Swagger)
+- **前端網址**：`http://localhost:5174`
+- **後端接口**：`http://localhost:5003`
+- **接口文檔**：`http://localhost:5003/swagger` (Swagger)
+
+> [!NOTE]
+> 若瀏覽器無法連線至 `localhost`，請嘗試改用 `http://127.0.0.1:5174`。
 
 ---
 
@@ -53,6 +56,28 @@ docker-compose up -d
 | :--- | :--- |
 | **測試帳號** | `admin` |
 | **測試密碼** | `admin1234` |
+
+---
+
+## 資料庫連線 (MySQL)
+
+若需使用外部工具（如 DBeaver, Navicat）連接資料庫，請使用以下資訊：
+
+| 欄位 | 數值 |
+| :--- | :--- |
+| **主機 (Host)** | `localhost` |
+| **連接埠 (Port)** | `3309` |
+| **帳號 (User)** | `root` |
+| **密碼 (Password)** | `root` |
+| **資料庫 (DB)** | `kanban_db` |
+
+### 進階：使用 Docker 指令進入資料庫
+
+如果您不想安裝 GUI 工具，也可以直接在終端機使用介面：
+
+```bash
+docker compose exec kanban_db mysql -u root -proot kanban_db
+```
 
 ---
 
