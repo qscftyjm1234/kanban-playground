@@ -6,9 +6,14 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Kanban.Domain.Entities;
 
-// ==========================================
-// >>> [BACKEND_ULTRA_SYNC_V9_FINAL] <<<
-// ==========================================
+// ==============================================================================
+// >>> [BACKEND_ULTRA_SYNC_V9_STARTING_NOW] <<<
+// 這行如果沒出現在日誌最前面，代表 Railway 根本沒吃到這份檔案！
+// ==============================================================================
+Console.WriteLine("\n\n#################################################");
+Console.WriteLine("#   [BACKEND_ULTRA_SYNC_V9_STARTING_NOW]        #");
+Console.WriteLine("#   時間: " + DateTime.UtcNow + " UTC             #");
+Console.WriteLine("#################################################\n\n");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,7 +37,6 @@ if (!string.IsNullOrEmpty(envUrl))
         var host = uri.Host;
         var port = uri.Port;
         var db = uri.AbsolutePath.TrimStart('/');
-        // 加入 AllowPublicKeyRetrieval=True 與 SSL Mode=None 以應對 Railway 公網 Proxy
         connectionString = $"Server={host};Port={port};Database={db};User={user};Password={password};AllowPublicKeyRetrieval=True;SSL Mode=None;Charset=utf8mb4;";
         source = "Environment URL (Parsed)";
     }
@@ -61,7 +65,6 @@ if (string.IsNullOrEmpty(connectionString))
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
-Console.WriteLine($"[Backend] 啟動時間: {DateTime.UtcNow} UTC");
 Console.WriteLine($"[Backend] 連線來源: {source}");
 if (!string.IsNullOrEmpty(connectionString))
 {
@@ -83,7 +86,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 設定 CORS（允許前端存取）
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -107,26 +109,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
-// 【核心同步點】自動建立資料庫與資料表
+// 【暴力重置邏輯】
 using (var scope = app.Services.CreateScope())
 {
     try 
     {
-        Console.WriteLine("\n\n>>> [BACKEND_ULTRA_SYNC_V9_FINAL] <<<\n");
-        Console.WriteLine("[Backend] 啟動中... 版本 V9 (Final Sync Fix)");
-        Console.WriteLine("[Backend] 正在執行現有資料庫徹底重置...");
-        
+        Console.WriteLine("\n\n>>> [DATABASE_SWEEP_EXECUTING] <<<\n");
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        
-        // 【暴力重置】先炸掉所有舊的表，確保新的「級聯刪除 (Cascade)」結構能正確建立
         context.Database.EnsureDeleted(); 
         context.Database.Migrate();       
-        
         Console.WriteLine("[Backend] 資料庫重置與遷移成功。");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[Backend] 致命錯誤: {ex.Message}");
+        Console.WriteLine($"[Backend] 執行錯誤: {ex.Message}");
     }
 }
 
@@ -143,7 +139,7 @@ app.MapControllers();
 
 app.Run();
 
-// JWT 憑證生成器介面與實作 (保持與您的專案一致)
+// JWT 憑證生成器 (與專案結構對齊)
 public interface IJwtTokenGenerator { string GenerateToken(User user); }
 public class JwtTokenGenerator : IJwtTokenGenerator
 {
